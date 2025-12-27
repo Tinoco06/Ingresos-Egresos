@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\TransactionRequest;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 
@@ -18,15 +19,19 @@ class TransactionController extends Controller
      */
     public function index()
     {
-        // mostrar las transacciones del usuario
-        $transactions = auth()->user()->transactions()->orderBy('date', 'desc')->get();
+        $user = auth()->user();
+    
+        $transactions = $user->transactions()->orderBy('date', 'desc')->paginate(15);
 
-        // calcular totales del usuario
-        $totalIngresos = $transactions->where('type', 'ingreso')->sum('amount');
-        $totalEgresos = $transactions->where('type', 'egreso')->sum('amount');
+        $summary = $user->transactions()->selectRaw("
+            COALESCE(SUM(CASE WHEN type = 'ingreso' THEN amount END), 0) AS total_ingresos,
+            COALESCE(SUM(CASE WHEN type = 'egreso' THEN amount END), 0) AS total_egresos
+        ")->first();
+
+        $totalIngresos = $summary->total_ingresos;
+        $totalEgresos = $summary->total_egresos;
         $balance = $totalIngresos - $totalEgresos;
 
-        // retornar la vista con los datos
         return view('transactions.index', compact('transactions', 'totalIngresos', 'totalEgresos', 'balance'));
 
     }
@@ -42,18 +47,9 @@ class TransactionController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(Request $request)
+    public function store(TransactionRequest $request)
     {
-        // validar y guardar la nueva transaccion
-        $validado = $request->validate([
-            'type' => 'required|in:ingreso,egreso',
-            'description' => 'required|string|max:255|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]*$/',
-            'amount' => 'required|numeric|min:0.01',
-            'date' => 'required|date',
-        ]);
-
-        // asociar la transacción al usuario autenticado
-        auth()->user()->transactions()->create($validado);
+        auth()->user()->transactions()->create($request->validated());
 
         return redirect()->route('transactions.index')->with('success', 'Transacción creada exitosamente.');
     }
@@ -71,10 +67,7 @@ class TransactionController extends Controller
      */
     public function edit(Transaction $transaction)
     {
-        // verificar que la transaccion sea del usuario autenticado
-        if($transaction->user_id !== auth()->id()){
-            abort(403);
-        }
+        $this->authorize('update', $transaction);
 
         return view('transactions.edit', compact('transaction'));
     }
@@ -82,24 +75,12 @@ class TransactionController extends Controller
     /**
      * Update the specified resource in storage.
      */
-    public function update(Request $request, Transaction $transaction)
+    public function update(TransactionRequest $request, Transaction $transaction)
     {
-        // verificar que la transaccion sea del usuario autenticado
-        if($transaction->user_id !== auth()->id()){
-            abort(403);
-        }
+        $this->authorize('update', $transaction);
 
-        $validado = $request->validate([
-            'type' => 'required|in:ingreso,egreso',
-            'description' => 'required|string|max:255|regex:/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+[a-zA-Z0-9áéíóúÁÉÍÓÚñÑ\s]*$/',
-            'amount' => 'required|numeric|min:0.01',
-            'date' => 'required|date',
-        ]);
+        $transaction->update($request->validated());
 
-        // actualizar la transacción 
-        $transaction->update($validado);
-
-        // retroalimentación al usuario
         return redirect()->route('transactions.index')->with('success','Transacción actualizada correctamente.');
 
     }
@@ -109,10 +90,7 @@ class TransactionController extends Controller
      */
     public function destroy(Transaction $transaction)
     {
-        // verificar que la transaccion sea del usuario autenticado
-        if($transaction->user_id !== auth()->id()){
-            abort(403);
-        }
+        $this->authorize('delete', $transaction);
 
         // eliminar la transacción
         $transaction->delete();
@@ -121,19 +99,16 @@ class TransactionController extends Controller
     }
 
     // función para la generación de grafica 
-    public function Data(){
-        
-        // obtener las transacciones del usuario
-        $transactions = auth()->user()->transactions;
-
-        $ingresos = $transactions->where('type','ingreso')->sum('amount');
-        $egresos = $transactions->where('type','egreso')->sum('amount');
+    public function data(){
+        $summary = auth()->user()->transactions()->selectRaw("
+            COALESCE(SUM(CASE WHEN type = 'ingreso' THEN amount END), 0) AS ingresos,
+            COALESCE(SUM(CASE WHEN type = 'egreso' THEN amount END), 0) AS egresos
+        ")->first();
 
         return response()->json([
-            'ingresos' => $ingresos,
-            'egresos' => $egresos,
-            'balance' => $ingresos - $egresos
+            'ingresos' => $summary->ingresos,
+            'egresos' => $summary->egresos,
+            'balance' => $summary->ingresos - $summary->egresos,
         ]);
-
     }
 }
