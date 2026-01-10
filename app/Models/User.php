@@ -47,8 +47,16 @@ class User extends Authenticatable
         ];
     }
 
+    // El usuario tiene varias transacciones
     public function transactions()
     {
         return $this->hasMany(Transaction::class);
     }
+
+    // El usuario tiene varios proyectos
+    public function projects()
+    {
+        return $this->hasMany(Project::class);
+    }
+
 }

@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class TransactionRequest extends FormRequest
+class ProjectRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -22,22 +22,18 @@ class TransactionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'project_id' => 'required|exists:projects,id',
-            'type' => 'required|in:ingreso,egreso',
-            'description' => 'required|string|max:255',
-            'amount' => 'required|numeric|min:0.01',
-            'date' => 'required|date',
+            // Validaciones de projects
+            'name' => 'required|string|max:250',
+            'description' => 'nullable|string|max:500',
         ];
     }
-
-    /**
-     * Mensajes personalizados de validación
-     */
+    
     public function messages(): array
     {
         return [
-            'project_id.required' => 'Debes seleccionar un proyecto para esta transacción.',
-            'project_id.exists' => 'El proyecto seleccionado no existe.',
+            'name.required' => 'El nombre del proyecto es obligatorio.',
+            'name.max' => 'El nombre no debe exceder 255 caracteres.',
+            'description.max' => 'La descripción no debe exceder 500 caracteres.',
         ];
     }
 }

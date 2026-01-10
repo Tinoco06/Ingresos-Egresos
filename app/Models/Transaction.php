@@ -10,6 +10,7 @@ class Transaction extends Model
     // Modelo de Transacción
     protected $fillable = [
         'user_id',
+        'project_id',
         'type',
         'description',
         'amount',
@@ -27,4 +28,11 @@ class Transaction extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    // Cada transacción pertenece a un proyecto
+    public function project()
+    {
+        return $this->belongsTo(Project::class);
+    }
+
 }

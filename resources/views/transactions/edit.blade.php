@@ -12,6 +12,31 @@
                         <form method="POST" action="{{ route('transactions.update', $transaction->id) }}">
                             @csrf
                             @method('PUT')
+
+                            {{-- Campo Proyecto --}}
+                            <div class="row mb-3">
+                                <label for="project_id" class="col-md-3 col-form-label text-md-end">Proyecto:</label>
+                                <div class="col-md-6">
+                                    <select id="project_id" name="project_id" class="form-select @error('project_id') is-invalid @enderror" required>
+                                        <option value="">Selecciona un proyecto</option>
+                                        @foreach($projects as $project)
+                                            <option value="{{ $project->id }}" {{ old('project_id', $transaction->project_id) == $project->id ? 'selected' : '' }}>
+                                                {{ $project->name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                    <small class="form-text text-muted">
+                                        Cada transacción debe estar asociada a un proyecto
+                                    </small>
+                                    @error('project_id')
+                                        <span class="invalid-feedback" role="alert">
+                                            <strong>{{ $message }}</strong>
+                                        </span>
+                                    @enderror
+                                </div>
+                            </div>
+
+                            {{-- Campo Tipo --}}
                             <div class="row mb-3">
                                 <label for="type" class="col-md-3 col-form-label text-md-end">Tipo:</label>
                                 <div class="col-md-6">

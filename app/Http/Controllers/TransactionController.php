@@ -8,22 +8,34 @@ use Illuminate\Http\Request;
 
 class TransactionController extends Controller
 {
-    // Asegura que el usuario este autenticado
-    public function __construct()
-    {
-        $this->middleware('auth');
-    }
-
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = auth()->user();
-    
-        $transactions = $user->transactions()->orderBy('date', 'desc')->paginate(15);
 
-        $summary = $user->transactions()->selectRaw("
+        // Obtener todos los proyectos para el filtro
+        $projects = $user->projects;
+
+        // Query base de transacciones
+        $query = $user->transactions()->with('project');
+
+        // Aplicar filtro de proyecto si existe
+        if ($request->filled('project')) {
+            $query->where('project_id', $request->project);
+        }
+
+        // Obtener transacciones paginadas
+        $transactions = $query->orderBy('date', 'desc')->paginate(15)->appends(['project' => $request->project]);
+
+        // Calcular resumen
+        $summaryQuery = $user->transactions();
+        if ($request->filled('project')) {
+            $summaryQuery->where('project_id', $request->project);
+        }
+
+        $summary = $summaryQuery->selectRaw("
             COALESCE(SUM(CASE WHEN type = 'ingreso' THEN amount END), 0) AS total_ingresos,
             COALESCE(SUM(CASE WHEN type = 'egreso' THEN amount END), 0) AS total_egresos
         ")->first();
@@ -32,7 +44,7 @@ class TransactionController extends Controller
         $totalEgresos = $summary->total_egresos;
         $balance = $totalIngresos - $totalEgresos;
 
-        return view('transactions.index', compact('transactions', 'totalIngresos', 'totalEgresos', 'balance'));
+        return view('transactions.index', compact('transactions', 'totalIngresos', 'totalEgresos', 'balance', 'projects'));
 
     }
     /**
@@ -40,8 +52,10 @@ class TransactionController extends Controller
      */
     public function create()
     {
-        // form para una nueva transacción
-        return view('transactions.create');
+        // Obtener proyectos del usuario para el selector
+        $projects = auth()->user()->projects;
+
+        return view('transactions.create', compact('projects'));
     }
 
     /**
@@ -69,7 +83,10 @@ class TransactionController extends Controller
     {
         $this->authorize('update', $transaction);
 
-        return view('transactions.edit', compact('transaction'));
+        // Obtener proyectos del usuario para el selector
+        $projects = auth()->user()->projects;
+
+        return view('transactions.edit', compact('transaction', 'projects'));
     }
 
     /**
