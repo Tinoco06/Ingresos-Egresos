@@ -98,17 +98,4 @@ class TransactionController extends Controller
         return redirect()->route('transactions.index')->with('success','Transacción eliminada correctamente.');
     }
 
-    // función para la generación de grafica 
-    public function data(){
-        $summary = auth()->user()->transactions()->selectRaw("
-            COALESCE(SUM(CASE WHEN type = 'ingreso' THEN amount END), 0) AS ingresos,
-            COALESCE(SUM(CASE WHEN type = 'egreso' THEN amount END), 0) AS egresos
-        ")->first();
-
-        return response()->json([
-            'ingresos' => $summary->ingresos,
-            'egresos' => $summary->egresos,
-            'balance' => $summary->ingresos - $summary->egresos,
-        ]);
-    }
 }
