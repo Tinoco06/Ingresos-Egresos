@@ -31,11 +31,20 @@ COPY composer.json composer.lock ./
 # Instalar dependencias PHP
 RUN composer install --no-dev --optimize-autoloader --no-scripts
 
+# Copiar package.json primero para npm
+COPY package.json package-lock.json ./
+
+# Instalar dependencias npm
+RUN npm install
+
 # Copiar el resto del proyecto
 COPY . .
 
-# Instalar dependencias npm y compilar assets
-RUN npm install && npm run build
+# Compilar assets con Vite
+RUN npm run build
+
+# Re-ejecutar composer para scripts post-install
+RUN composer dump-autoload --optimize
 
 # Permisos
 RUN chmod -R 775 storage bootstrap/cache
