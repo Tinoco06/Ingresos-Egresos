@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\TransactionsExport;
 use App\Http\Requests\TransactionRequest;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
+use Maatwebsite\Excel\Facades\Excel;
 
 class TransactionController extends Controller
 {
@@ -14,38 +16,61 @@ class TransactionController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
-
-        // Obtener todos los proyectos para el filtro
         $projects = $user->projects;
 
-        // Query base de transacciones
-        $query = $user->transactions()->with('project');
-
-        // Aplicar filtro de proyecto si existe
+        // Validar que el proyecto pertenece al usuario
         if ($request->filled('project')) {
-            $query->where('project_id', $request->project);
+            if (!$user->projects()->where('id', $request->project)->exists()) {
+                return redirect()->route('transactions.index')
+                    ->with('error', 'El proyecto seleccionado no es válido.');
+            }
         }
 
-        // Obtener transacciones paginadas
-        $transactions = $query->orderBy('date', 'desc')->paginate(15)->appends(['project' => $request->project]);
+        // Obtener los filtros
+        $filters = [
+            'project' => $request->integer('project') ?: null,
+            'month' => $request->integer('month') ?: null,
+            'year' => $request->integer('year') ?: null,
+            'search' => $request->string('search')->trim()->toString() ?: null,
+        ];
 
-        // Calcular resumen
-        $summaryQuery = $user->transactions();
-        if ($request->filled('project')) {
-            $summaryQuery->where('project_id', $request->project);
+        // Obtener parámetros de ordenamiento
+        $sortBy = $request->input('sort', 'date');
+        $sortDir = $request->input('dir', 'desc');
+
+        // Validar columnas permitidas para ordenar
+        $allowedSorts = ['date', 'amount'];
+        if (!in_array($sortBy, $allowedSorts)) {
+            $sortBy = 'date';
         }
+        $sortDir = $sortDir === 'asc' ? 'asc' : 'desc';
 
-        $summary = $summaryQuery->selectRaw("
-            COALESCE(SUM(CASE WHEN type = 'ingreso' THEN amount END), 0) AS total_ingresos,
-            COALESCE(SUM(CASE WHEN type = 'egreso' THEN amount END), 0) AS total_egresos
-        ")->first();
+        // Obtener transacciones paginadas con filtros
+        $transactions = $user->transactions()
+            ->with('project')
+            ->applyFilters($filters['project'], $filters['month'], $filters['year'], $filters['search'])
+            ->orderBy($sortBy, $sortDir)
+            ->paginate(15)
+            ->appends(array_merge($filters, ['sort' => $sortBy, 'dir' => $sortDir]));
+
+        // Calcular resumen con los mismos filtros
+        $summary = $user->transactions()
+            ->applyFilters($filters['project'], $filters['month'], $filters['year'], $filters['search'])
+            ->selectRaw("
+                COALESCE(SUM(CASE WHEN type = 'ingreso' THEN amount END), 0) AS total_ingresos,
+                COALESCE(SUM(CASE WHEN type = 'egreso' THEN amount END), 0) AS total_egresos
+            ")->first();
 
         $totalIngresos = $summary->total_ingresos;
         $totalEgresos = $summary->total_egresos;
         $balance = $totalIngresos - $totalEgresos;
 
-        return view('transactions.index', compact('transactions', 'totalIngresos', 'totalEgresos', 'balance', 'projects'));
+        // Obtener años disponibles desde la transacción más antigua hasta el actual
+        $oldestYear = $user->transactions()->min('date');
+        $oldestYear = $oldestYear ? (int) date('Y', strtotime($oldestYear)) : now()->year;
+        $years = range(now()->year, $oldestYear);
 
+        return view('transactions.index', compact('transactions', 'totalIngresos', 'totalEgresos', 'balance', 'projects', 'years', 'sortBy', 'sortDir'));
     }
     /**
      * Show the form for creating a new resource.
@@ -63,17 +88,17 @@ class TransactionController extends Controller
      */
     public function store(TransactionRequest $request)
     {
+        // Verificar que el proyecto pertenece al usuario (doble validación de seguridad)
+        $project = auth()->user()->projects()->find($request->project_id);
+        if (!$project) {
+            return redirect()->route('transactions.create')
+                ->with('error', 'El proyecto seleccionado no es válido.')
+                ->withInput();
+        }
+
         auth()->user()->transactions()->create($request->validated());
 
         return redirect()->route('transactions.index')->with('success', 'Transacción creada exitosamente.');
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(Transaction $transaction)
-    {
-        //
     }
 
     /**
@@ -115,17 +140,70 @@ class TransactionController extends Controller
         return redirect()->route('transactions.index')->with('success','Transacción eliminada correctamente.');
     }
 
-    // función para la generación de grafica 
-    public function data(){
-        $summary = auth()->user()->transactions()->selectRaw("
-            COALESCE(SUM(CASE WHEN type = 'ingreso' THEN amount END), 0) AS ingresos,
-            COALESCE(SUM(CASE WHEN type = 'egreso' THEN amount END), 0) AS egresos
-        ")->first();
+    /**
+     * Exportar transacciones a Excel
+     */
+    public function export(Request $request)
+    {
+        $user = auth()->user();
 
-        return response()->json([
-            'ingresos' => $summary->ingresos,
-            'egresos' => $summary->egresos,
-            'balance' => $summary->ingresos - $summary->egresos,
-        ]);
+        // Validar que el proyecto pertenece al usuario
+        if ($request->filled('project')) {
+            if (!$user->projects()->where('id', $request->project)->exists()) {
+                return redirect()->route('transactions.index')
+                    ->with('error', 'El proyecto seleccionado no es válido.');
+            }
+        }
+
+        // Obtener los filtros
+        $filters = [
+            'project' => $request->integer('project') ?: null,
+            'month' => $request->integer('month') ?: null,
+            'year' => $request->integer('year') ?: null,
+            'search' => $request->string('search')->trim()->toString() ?: null,
+        ];
+
+        // Obtener transacciones con filtros
+        $transactions = $user->transactions()
+            ->with('project')
+            ->applyFilters($filters['project'], $filters['month'], $filters['year'], $filters['search'])
+            ->orderBy('date', 'desc')
+            ->get();
+
+        // Validar que haya transacciones para exportar
+        if ($transactions->isEmpty()) {
+            return redirect()->route('transactions.index', $filters)
+                ->with('error', 'No hay transacciones para exportar con los filtros seleccionados.');
+        }
+
+        // Generar nombre del archivo dinámico
+        $filename = $this->generateExportFilename($user, $filters);
+
+        return Excel::download(new TransactionsExport($transactions), $filename);
+    }
+
+    /**
+     * Genera el nombre del archivo de exportación
+     */
+    private function generateExportFilename($user, array $filters): string
+    {
+        $filename = 'transacciones';
+
+        if ($filters['month'] && $filters['year']) {
+            $filename .= "_{$filters['month']}_{$filters['year']}";
+        } elseif ($filters['year']) {
+            $filename .= "_{$filters['year']}";
+        } elseif ($filters['month']) {
+            $filename .= "_mes_{$filters['month']}";
+        }
+
+        if ($filters['project']) {
+            $project = $user->projects()->find($filters['project']);
+            if ($project) {
+                $filename .= '_' . str_replace(' ', '_', $project->name);
+            }
+        }
+
+        return $filename . '.xlsx';
     }
 }

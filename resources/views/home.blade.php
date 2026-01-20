@@ -6,27 +6,17 @@
         <div class="col-md-10">
             <h2 class="mb-4">Bienvenido(a) {{ Auth::user()->name }}</h2>
 
-            @if (session('status'))
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    {{ session('status') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            @endif
-
-            <div class="row">
+            <div class="row justify-content-center">
                 {{-- Card 1: Transacciones --}}
-                <div class="col-md-4 mb-4">
+                <div class="col-md-5 mb-4">
                     <div class="card h-100 shadow-sm">
                         <div class="card-body text-center">
                             <div class="mb-3">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" class="bi bi-cash-coin text-success" viewBox="0 0 16 16">
-                                    <path fill-rule="evenodd" d="M11 15a4 4 0 1 0 0-8 4 4 0 0 0 0 8m5-4a5 5 0 1 1-10 0 5 5 0 0 1 10 0"/>
-                                    <path d="M1 4a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H4.96c.03-.32.03-.66 0-.99H13V4H2v6h1.54c-.02.33-.03.66-.04.99H2a1 1 0 0 1-1-1z"/>
-                                </svg>
+                                <i class="bi bi-cash-coin" style="font-size: 4rem; color: #6f42c1;"></i>
                             </div>
                             <h4 class="card-title">Transacciones</h4>
                             <p class="card-text text-muted">Administra tus ingresos y egresos</p>
-                            <a href="{{ route('transactions.index') }}" class="btn btn-success btn-lg w-100">
+                            <a href="{{ route('transactions.index') }}" class="btn btn-lg w-100" style="background-color: #6f42c1; color: white;">
                                 Ver Transacciones
                             </a>
                         </div>
@@ -34,13 +24,11 @@
                 </div>
 
                 {{-- Card 2: Mis Proyectos --}}
-                <div class="col-md-4 mb-4">
+                <div class="col-md-5 mb-4">
                     <div class="card h-100 shadow-sm">
                         <div class="card-body text-center">
                             <div class="mb-3">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" class="bi bi-folder text-primary" viewBox="0 0 16 16">
-                                    <path d="M.54 3.87.5 3a2 2 0 0 1 2-2h3.672a2 2 0 0 1 1.414.586l.828.828A2 2 0 0 0 9.828 3h3.982a2 2 0 0 1 1.992 2.181l-.637 7A2 2 0 0 1 13.174 14H2.826a2 2 0 0 1-1.991-1.819l-.637-7a2 2 0 0 1 .342-1.31zM2.19 4a1 1 0 0 0-.996 1.09l.637 7a1 1 0 0 0 .995.91h10.348a1 1 0 0 0 .995-.91l.637-7A1 1 0 0 0 13.81 4zm4.69-1.707A1 1 0 0 0 6.172 2H2.5a1 1 0 0 0-1 .981l.006.139q.323-.119.684-.12h5.396z"/>
-                                </svg>
+                                <i class="bi bi-folder text-primary" style="font-size: 4rem;"></i>
                             </div>
                             <h4 class="card-title">Mis Proyectos</h4>
                             <p class="card-text text-muted">Organiza tus transacciones por proyecto</p>
@@ -50,21 +38,52 @@
                         </div>
                     </div>
                 </div>
+            </div>
+            {{-- Métricas del Mes Actual --}}
+            <div class="row mt-5">
+                <div class="col-12 mb-3">
+                    <h4 class="text-muted">
+                        <i class="bi bi-calendar-month me-2"></i>
+                        Resumen del Mes - {{ now()->locale('es')->translatedFormat('F Y') }}
+                    </h4>
+                    <hr>
+                </div>
 
-                {{-- Card 3: Reportes --}}
+                {{-- Card: Ingresos del Mes --}}
                 <div class="col-md-4 mb-4">
-                    <div class="card h-100 shadow-sm">
+                    <div class="card border-success shadow-sm h-100">
                         <div class="card-body text-center">
                             <div class="mb-3">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" fill="currentColor" class="bi bi-bar-chart-line text-warning" viewBox="0 0 16 16">
-                                    <path d="M11 2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v12h.5a.5.5 0 0 1 0 1H.5a.5.5 0 0 1 0-1H1v-3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3h1V7a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v7h1zm1 12h2V2h-2zm-3 0V7H7v7zm-5 0v-3H2v3z"/>
-                                </svg>
+                                <i class="bi bi-arrow-up-circle-fill text-success" style="font-size: 3rem;"></i>
                             </div>
-                            <h4 class="card-title">Reportes</h4>
-                            <p class="card-text text-muted">Visualiza estadísticas y gráficos</p>
-                            <a href="#" class="btn btn-warning btn-lg w-100">
-                                Ver Reportes
-                            </a>
+                            <h5 class="card-title text-muted mb-3">Ingresos del Mes</h5>
+                            <h2 class="text-success fw-bold">L{{ number_format($ingresosMes, 2) }}</h2>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Card: Egresos del Mes --}}
+                <div class="col-md-4 mb-4">
+                    <div class="card border-danger shadow-sm h-100">
+                        <div class="card-body text-center">
+                            <div class="mb-3">
+                                <i class="bi bi-arrow-down-circle-fill text-danger" style="font-size: 3rem;"></i>
+                            </div>
+                            <h5 class="card-title text-muted mb-3">Egresos del Mes</h5>
+                            <h2 class="text-danger fw-bold">L{{ number_format($egresosMes, 2) }}</h2>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Card: Transacciones del Mes --}}
+                <div class="col-md-4 mb-4">
+                    <div class="card border-info shadow-sm h-100">
+                        <div class="card-body text-center">
+                            <div class="mb-3">
+                                <i class="bi bi-receipt text-info" style="font-size: 3rem;"></i>
+                            </div>
+                            <h5 class="card-title text-muted mb-3">Transacciones del Mes</h5>
+                            <h2 class="text-info fw-bold">{{ $transaccionesMes }}</h2>
                         </div>
                     </div>
                 </div>

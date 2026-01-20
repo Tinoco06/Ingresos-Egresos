@@ -22,11 +22,11 @@ class TransactionRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'project_id' => 'required|exists:projects,id',
+            'project_id' => 'required|exists:projects,id,user_id,' . auth()->id(),  //Verifica que el proyecto pertenezca al usuario autenticado
             'type' => 'required|in:ingreso,egreso',
             'description' => 'required|string|max:255',
             'amount' => 'required|numeric|min:0.01',
-            'date' => 'required|date',
+            'date' => 'required|date|before_or_equal:today',
         ];
     }
 
@@ -38,6 +38,7 @@ class TransactionRequest extends FormRequest
         return [
             'project_id.required' => 'Debes seleccionar un proyecto para esta transacción.',
             'project_id.exists' => 'El proyecto seleccionado no existe.',
+            'date.before_or_equal' => 'La fecha no puede ser posterior a hoy.',
         ];
     }
 }

@@ -13,7 +13,8 @@ class TransactionPolicy
      */
     public function viewAny(User $user): bool
     {
-        return false;
+        // Los usuarios autenticados pueden ver sus propias transacciones
+        return true;
     }
 
     /**
@@ -21,7 +22,7 @@ class TransactionPolicy
      */
     public function view(User $user, Transaction $transaction): bool
     {
-        return false;
+        return $user->id === $transaction->user_id;
     }
 
     /**
@@ -29,7 +30,8 @@ class TransactionPolicy
      */
     public function create(User $user): bool
     {
-        return false;
+        // Los usuarios autenticados pueden crear transacciones
+        return true;
     }
 
     /**

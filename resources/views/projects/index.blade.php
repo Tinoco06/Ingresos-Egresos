@@ -4,14 +4,6 @@
 <div class="container">
     <div class="row justify-content-center">
         <div class="col-md-12">
-            {{-- Mensaje de éxito --}}
-            @if(session('success'))
-                <div class="alert alert-success alert-dismissible fade show" role="alert">
-                    {{ session('success') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-                </div>
-            @endif
-
             {{-- Card principal de proyectos --}}
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
@@ -21,15 +13,16 @@
                         </a>
                         <h5 class="mb-0">Mis Proyectos</h5>
                     </div>
-                    <a href="{{ route('projects.create') }}" class="btn btn-primary">
-                        <i class="bi bi-plus-circle"></i> Nuevo Proyecto
+                    <a href="{{ route('projects.create') }}" class="btn btn-primary" title="Nuevo Proyecto">
+                        <i class="bi bi-plus-circle"></i>
+                        <span class="d-none d-md-inline">Nuevo</span>
                     </a>
                 </div>
                 <div class="card-body">
                     @if($projects->count() > 0)
-                        <div class="row">
+                        <div class="row g-3">
                             @foreach($projects as $project)
-                                <div class="col-md-4 mb-4">
+                                <div class="col-md-4">
                                     <div class="card h-100 shadow-sm border-primary">
                                         <div class="card-body">
                                             <div class="d-flex justify-content-between align-items-start mb-3">
@@ -64,42 +57,18 @@
                                                    title="Editar proyecto">
                                                     <i class="bi bi-pencil"></i> Editar
                                                 </a>
-                                                <button type="button"
-                                                        class="btn btn-sm btn-outline-danger"
-                                                        data-bs-toggle="modal"
-                                                        data-bs-target="#deleteModal{{ $project->id }}"
-                                                        title="Eliminar proyecto">
-                                                    <i class="bi bi-trash"></i> Eliminar
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {{-- Modal de confirmación para eliminar --}}
-                                <div class="modal fade" id="deleteModal{{ $project->id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ $project->id }}" aria-hidden="true">
-                                    <div class="modal-dialog">
-                                        <div class="modal-content">
-                                            <div class="modal-header">
-                                                <h5 class="modal-title" id="deleteModalLabel{{ $project->id }}">Confirmar eliminación</h5>
-                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                            </div>
-                                            <div class="modal-body">
-                                                <p>¿Estás seguro de que deseas eliminar el proyecto <strong>{{ $project->name }}</strong>?</p>
-                                                @if($project->transactions_count > 0)
-                                                    <div class="alert alert-warning">
-                                                        <strong>Advertencia:</strong> Este proyecto tiene {{ $project->transactions_count }}
-                                                        {{ $project->transactions_count == 1 ? 'transacción asociada' : 'transacciones asociadas' }}.
-                                                        Al eliminar el proyecto, las transacciones quedarán sin proyecto asignado.
-                                                    </div>
-                                                @endif
-                                            </div>
-                                            <div class="modal-footer">
-                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                                <form action="{{ route('projects.destroy', $project->id) }}" method="POST" style="display:inline;">
+                                                <form id="delete-project-{{ $project->id }}"
+                                                      action="{{ route('projects.destroy', $project->id) }}"
+                                                      method="POST"
+                                                      style="display:inline;">
                                                     @csrf
                                                     @method('DELETE')
-                                                    <button type="submit" class="btn btn-danger">Sí, eliminar</button>
+                                                    <button type="button"
+                                                            class="btn btn-sm btn-outline-danger"
+                                                            title="Eliminar proyecto"
+                                                            onclick="confirmDeleteProject({{ $project->id }}, '{{ $project->name }}', {{ $project->transactions_count }})">
+                                                        <i class="bi bi-trash"></i> Eliminar
+                                                    </button>
                                                 </form>
                                             </div>
                                         </div>
@@ -135,4 +104,34 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+    function confirmDeleteProject(projectId, projectName, transactionsCount) {
+        if (transactionsCount > 0) {
+            Swal.fire({
+                icon: 'error',
+                title: 'No se puede eliminar',
+                html: `El proyecto <strong>${projectName}</strong> tiene <strong>${transactionsCount}</strong> ${transactionsCount === 1 ? 'transacción asociada' : 'transacciones asociadas'}.<br><br><small>Debes eliminar o mover las transacciones a otro proyecto antes de eliminar este.</small>`,
+                confirmButtonColor: '#dc3545'
+            });
+        } else {
+            Swal.fire({
+                title: '¿Eliminar proyecto?',
+                html: `¿Estás seguro de eliminar el proyecto <strong>${projectName}</strong>?`,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#dc3545',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    document.getElementById('delete-project-' + projectId).submit();
+                }
+            });
+        }
+    }
+</script>
+@endpush
 @endsection

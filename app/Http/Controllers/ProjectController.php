@@ -37,14 +37,6 @@ class ProjectController extends Controller
     }
 
     /**
-     * Display the specified resource.
-     */
-    public function show(Project $project)
-    {
-        //
-    }
-
-    /**
      * Show the form for editing the specified resource.
      */
     public function edit(Project $project)
@@ -72,6 +64,14 @@ class ProjectController extends Controller
     public function destroy(Project $project)
     {
         $this->authorize('delete', $project);
+
+        // Verificar si el proyecto tiene transacciones activas
+        $transactionCount = $project->transactions()->count();
+
+        if ($transactionCount > 0) {
+            return redirect()->route('projects.index')
+                ->with('error', "No puedes eliminar este proyecto. Tiene {$transactionCount} transacción(es) asociada(s). Elimina o mueve las transacciones primero.");
+        }
 
         $project->delete();
 
