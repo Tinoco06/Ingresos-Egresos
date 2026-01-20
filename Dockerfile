@@ -1,6 +1,6 @@
 FROM php:8.4-cli
 
-# Instalar dependencias del sistema
+# Instalar dependencias del sistema y Node.js actualizado
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -10,8 +10,8 @@ RUN apt-get update && apt-get install -y \
     libzip-dev \
     zip \
     unzip \
-    nodejs \
-    npm
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs
 
 # Limpiar cache
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
