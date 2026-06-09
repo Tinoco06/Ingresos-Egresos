@@ -23,9 +23,6 @@ Route::middleware('guest')->group(function () {
 // Logout y otras ruta
 Route::post('logout', [LoginController::class, 'logout'])->name('logout')->middleware('auth');
 
-// Rutas de recuperación de contraseña 
-Auth::routes(['login' => false, 'register' => false, 'logout' => false]);
-
 
 Route::middleware('auth')->group(function () {
     Route::get('/home', [HomeController::class, 'index'])->name('home');
